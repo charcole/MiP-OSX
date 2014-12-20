@@ -5,6 +5,9 @@
 
 #define MAX_DATA 64
 
+#define READ_SERVICE_UUID @"FFE0"
+#define SEND_SERVICE_UUID @"FFE5"
+
 unsigned char hexDigitToNum(char d)
 {
 	if (d>='a' && d<='f')
@@ -88,12 +91,13 @@ struct MiPInputs inputs[]=
 	NSLog(@"Starting scan %ld", mgr.state);
 	CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, YES);
 	NSLog(@"Starting scan %ld", mgr.state);
-	[mgr scanForPeripheralsWithServices:nil options:nil];
+	NSArray *services = [NSArray arrayWithObjects:@[[CBUUID UUIDWithString:SEND_SERVICE_UUID]], @[[CBUUID UUIDWithString:READ_SERVICE_UUID]], nil];
+	[mgr scanForPeripheralsWithServices:services options:nil];
 	CFRunLoopRunInMode(kCFRunLoopDefaultMode, 3, NO);
 	for (CBPeripheral *peripheral in foundPeripherals)
 	{
 		NSLog(@"Connecting %ld", peripheral.state);
-		[mgr connectPeripheral:peripheral options:nil]; // Why?!
+		[mgr connectPeripheral:peripheral options:nil]; // Why?! Should have already happened in discovery
 		while (peripheral.state==CBPeripheralStateConnecting)
 		{
 			NSLog(@"Connecting %ld", peripheral.state);
@@ -174,7 +178,7 @@ struct MiPInputs inputs[]=
     	[mgr stopScan];
         [peripheral retain];
 		peripheral.delegate=self;
-		NSLog(@"Connecting from discover");
+		NSLog(@"Connecting from discovery");
 		[mgr connectPeripheral:peripheral options:nil];
 		//CFRunLoopStop(CFRunLoopGetCurrent());
     }
@@ -201,13 +205,13 @@ struct MiPInputs inputs[]=
 	NSLog(@"Discovered services %@", peripheral.name);
     for (CBService *service in peripheral.services)
 	{
-        NSLog(@"Discovered service %@", service);
-		if ([service.UUID isEqual:[CBUUID UUIDWithString:@"FFE0"]])
+        //NSLog(@"Discovered service %@", service);
+		if ([service.UUID isEqual:[CBUUID UUIDWithString:READ_SERVICE_UUID]])
 		{
-			NSLog(@"Found MiP recieve data service");
+			NSLog(@"Found MiP receive data service");
 			[peripheral discoverCharacteristics:nil forService:service];
 		}
-		else if ([service.UUID isEqual:[CBUUID UUIDWithString:@"FFE5"]])
+		else if ([service.UUID isEqual:[CBUUID UUIDWithString:SEND_SERVICE_UUID]])
 		{
 			NSLog(@"Found MiP send data service");
 			[peripheral discoverCharacteristics:nil forService:service];
