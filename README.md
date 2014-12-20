@@ -3,7 +3,7 @@ MiP-OSX
 
 An attempt to control a WowWee MiP from OSX using CoreBluetooth.
 
-It's not the definitive library. In fact, it's pretty flakey. It might help someone else to get something working though, so thought I'd add it to github anyway.
+This is not the definitive library for MiP or anything. In fact, it's pretty flakey. It might help someone else to get something working though, so thought I'd add it to github anyway. It's a simple command line tool that someone could maybe build off.
 
 To compile and run...
 
@@ -11,22 +11,22 @@ To compile and run...
 clang main.m -framework Foundation -framework CoreBluetooth -o mip.out && ./mip.out
 ```
 
-With any luck it'll prompt you with "Get command". You can then type in commands as hex such as...
+With a bit of luck it'll prompt you with "Get command" after a few seconds. You can then type in commands as hex such as...
 
 | Code | Effect |
-|---------------|
+|------|--------|
 | 0630 | To play a tune |
-| 83FF00FF | To change front LED colour |
+| 83FF00FF | To change the front LED colour |
 | FE | Disconnect |
 
-[More commands](https://github.com/WowWeeLabs/MiP-BLE-Protocol/blob/master/MiP-Protocol.md)
+WowWee publish [more commands](https://github.com/WowWeeLabs/MiP-BLE-Protocol/blob/master/MiP-Protocol.md) for MiP on their github.
 
 To disconnect gracefully use the "FE" command then enter an empty command to disconnect from the OSX end.
 
 The things I don't understand:
-- It only connects if I call connectPeripheral in didDiscoverPerphiferal AND after the CFRunLoopRunInMode is done
-- Cancelling the run loop as soon as the discover happens also makes connect fail
-- Timings of CFRunLoops can also cause it not to connect
-- *But it does work..... just not happy about it. It doesn't feel correct*
+- It only connects if I call connectPeripheral in didDiscoverPerphipheral AND after the CFRunLoopRunInMode is done
+- Cancelling the run loop as soon as the discovery happens also makes connect fail
+- Timings of CFRunLoops in general can also cause it not to connect in some situations
+- *But it does work..... I'm just not happy about it*
 
-*MiP uses Bluetooth LE so you either need a very up-to-date Mac or a Bluetooth LE dongle.*
+*Nb. MiP uses Bluetooth LE so you either need a very up-to-date Mac or a USB Bluetooth LE dongle*
