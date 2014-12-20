@@ -144,7 +144,7 @@ struct MiPInputs inputs[]=
 				CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, NO);
 			}
 		}
-					
+
 		NSLog(@"Disconnecting");
 		[mgr cancelPeripheralConnection:peripheral];
 		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, YES);
@@ -173,15 +173,15 @@ struct MiPInputs inputs[]=
 		NSLog(@"didDiscoverPeripheral: Name: %@", peripheral.name);
 		NSLog(@"didDiscoverPeripheral: Advertisment Data: %@", advertisementData);
 		NSLog(@"didDiscoverPeripheral: RSSI: %@", RSSI);
-        [foundPeripherals addObject:peripheral];
+		[foundPeripherals addObject:peripheral];
 		NSLog(@"Stopping scan");
-    	[mgr stopScan];
-        [peripheral retain];
+		[mgr stopScan];
+		[peripheral retain];
 		peripheral.delegate=self;
 		NSLog(@"Connecting from discovery");
 		[mgr connectPeripheral:peripheral options:nil];
 		//CFRunLoopStop(CFRunLoopGetCurrent());
-    }
+	}
 }
 
 - (void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral
@@ -203,9 +203,9 @@ struct MiPInputs inputs[]=
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverServices:(NSError *)error
 { 
 	NSLog(@"Discovered services %@", peripheral.name);
-    for (CBService *service in peripheral.services)
+	for (CBService *service in peripheral.services)
 	{
-        //NSLog(@"Discovered service %@", service);
+		//NSLog(@"Discovered service %@", service);
 		if ([service.UUID isEqual:[CBUUID UUIDWithString:READ_SERVICE_UUID]])
 		{
 			NSLog(@"Found MiP receive data service");
@@ -216,25 +216,25 @@ struct MiPInputs inputs[]=
 			NSLog(@"Found MiP send data service");
 			[peripheral discoverCharacteristics:nil forService:service];
 		}
-    }
+	}
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverCharacteristicsForService:(CBService *)service error:(NSError *)error
 {
-    for (CBCharacteristic *characteristic in service.characteristics)
+	for (CBCharacteristic *characteristic in service.characteristics)
 	{
-        NSLog(@"Discovered characteristic %@", characteristic);
+		NSLog(@"Discovered characteristic %@", characteristic);
 		if ([characteristic.UUID isEqual:[CBUUID UUIDWithString:@"FFE4"]])
 		{
 			NSLog(@"Found MiP NOTIFY characteristic");
-    		[peripheral setNotifyValue:YES forCharacteristic:characteristic];
+			[peripheral setNotifyValue:YES forCharacteristic:characteristic];
 		}
 		else if ([characteristic.UUID isEqual:[CBUUID UUIDWithString:@"FFE9"]])
 		{
 			NSLog(@"Found MiP WRITE characteristic");
 			writeCharacteristic=characteristic;
 		}
-    }
+	}
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error
@@ -260,10 +260,10 @@ struct MiPInputs inputs[]=
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error
 { 
-    if (error)
+	if (error)
 	{
-        NSLog(@"Error changing notification state: %@", [error localizedDescription]);
-    }
+		NSLog(@"Error changing notification state: %@", [error localizedDescription]);
+	}
 }
 
 @end
