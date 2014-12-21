@@ -53,12 +53,15 @@ struct MiPInputs inputs[]=
 @interface MIP : NSObject {
 }
 - (void) startScan;
-@property (retain, nonatomic) NSMutableArray    *foundPeripherals;
+@property (retain) NSMutableArray    *foundPeripherals;
 @end    
 
 @interface MIP () <CBCentralManagerDelegate, CBPeripheralDelegate> {
 	CBCentralManager *mgr;
 	CBCharacteristic *writeCharacteristic;
+	dispatch_queue_t queue;
+	semaphore_t foundSemaphore;
+	semaphore_t connectSemaphore;
 }
 @end
 
@@ -70,9 +73,12 @@ struct MiPInputs inputs[]=
 {
 	if (self=[super init])
 	{
-		mgr=[[CBCentralManager alloc] initWithDelegate:self queue:nil options:nil];
+		queue = dispatch_queue_create("com.example.MiPOSXQueue", NULL);
+		mgr=[[CBCentralManager alloc] initWithDelegate:self queue:queue options:nil];
 		foundPeripherals = [[NSMutableArray alloc] init];
 		writeCharacteristic=NULL;
+		semaphore_create(current_task(), &foundSemaphore, SYNC_POLICY_FIFO, 0);
+		semaphore_create(current_task(), &connectSemaphore, SYNC_POLICY_FIFO, 0);
 	}
 	return self;
 }
@@ -82,72 +88,63 @@ struct MiPInputs inputs[]=
 	NSLog(@"Shutting down");
 	[mgr release];
 	[foundPeripherals release];
+	semaphore_destroy(current_task(), foundSemaphore);
+	semaphore_destroy(current_task(), connectSemaphore);
 	[super dealloc];
 }
 
 - (void) startScan
 {
+	while (mgr.state==CBCentralManagerStatePoweredOn)
+	{
+		NSLog(@"Waiting for power on");
+	}
 	NSLog(@"Starting scan");
-	NSLog(@"Starting scan %ld", mgr.state);
-	CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, YES);
-	NSLog(@"Starting scan %ld", mgr.state);
 	NSArray *services = [NSArray arrayWithObjects:@[[CBUUID UUIDWithString:SEND_SERVICE_UUID]], @[[CBUUID UUIDWithString:READ_SERVICE_UUID]], nil];
 	[mgr scanForPeripheralsWithServices:services options:nil];
-	CFRunLoopRunInMode(kCFRunLoopDefaultMode, 3, NO);
+	semaphore_wait(foundSemaphore);
 	for (CBPeripheral *peripheral in foundPeripherals)
 	{
 		NSLog(@"Connecting %ld", peripheral.state);
+		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, NO); // Need to wait or connect doesn't succeed
 		[mgr connectPeripheral:peripheral options:nil]; // Why?! Should have already happened in discovery
-		while (peripheral.state==CBPeripheralStateConnecting)
+		semaphore_wait(connectSemaphore);
+		while (true)
 		{
-			NSLog(@"Connecting %ld", peripheral.state);
-			CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, YES);
-		}
-		if (peripheral.state==CBPeripheralStateConnected)
-		{
-			NSLog(@"connected %@", peripheral.name);
-			while (!writeCharacteristic)
+			char buffer[1024];
+			unsigned char data[MAX_DATA];
+			NSLog(@"Enter hex command:");
+			fgets(buffer, sizeof(buffer), stdin);
+			int strLength=strlen(buffer);
+			while (strLength>0 && (buffer[strLength-1]=='\n' || buffer[strLength-1]=='\r'))
 			{
-				NSLog(@"Waiting for write characteristic");
-				CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, NO);
+				strLength--;
 			}
-			NSLog(@"Writing to characteristic");
-
-			while (true)
+			if (strLength==0)
 			{
-				char buffer[1024];
-				unsigned char data[MAX_DATA];
-				NSLog(@"Get command");
-				gets(buffer);
-				int strLength=strlen(buffer);
-				if (strLength==0)
-				{
-					break;
-				}
-				else if (strLength&1)
-				{
-					NSLog(@"Must be an even number of hex digits");
-				}
-				else
-				{
-					int length=0;
-					while (length*2<strLength && length<MAX_DATA)
-					{
-						data[length]=hexDigitToNum(buffer[2*length+0])<<4;
-						data[length]+=hexDigitToNum(buffer[2*length+1]);
-						length++;
-					}
-					NSLog(@"Sending %d bytes", length);
-					NSData *dataToWrite = [NSData dataWithBytesNoCopy:data length:length freeWhenDone:NO];
-					[peripheral writeValue:dataToWrite forCharacteristic:writeCharacteristic type:CBCharacteristicWriteWithResponse];
-				}	
-				CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, NO);
+				break;
 			}
+			else if (strLength&1)
+			{
+				NSLog(@"Must be an even number of hex digits");
+			}
+			else
+			{
+				int length=0;
+				while (length*2<strLength && length<MAX_DATA)
+				{
+					data[length]=hexDigitToNum(buffer[2*length+0])<<4;
+					data[length]+=hexDigitToNum(buffer[2*length+1]);
+					length++;
+				}
+				NSLog(@"Sending %d bytes", length);
+				NSData *dataToWrite = [NSData dataWithBytesNoCopy:data length:length freeWhenDone:NO];
+				[peripheral writeValue:dataToWrite forCharacteristic:writeCharacteristic type:CBCharacteristicWriteWithResponse];
+			}	
 		}
-
 		NSLog(@"Disconnecting");
 		[mgr cancelPeripheralConnection:peripheral];
-		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, YES);
+		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, NO);
 	}
 }
 
@@ -180,7 +177,7 @@ struct MiPInputs inputs[]=
 		peripheral.delegate=self;
 		NSLog(@"Connecting from discovery");
 		[mgr connectPeripheral:peripheral options:nil];
-		//CFRunLoopStop(CFRunLoopGetCurrent());
+		semaphore_signal(foundSemaphore);
 	}
 }
 
@@ -233,6 +230,7 @@ struct MiPInputs inputs[]=
 		{
 			NSLog(@"Found MiP WRITE characteristic");
 			writeCharacteristic=characteristic;
+			semaphore_signal(connectSemaphore);
 		}
 	}
 }

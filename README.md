@@ -11,7 +11,7 @@ To compile and run...
 clang main.m -framework Foundation -framework CoreBluetooth -o mip.out && ./mip.out
 ```
 
-With a bit of luck it'll prompt you with "Get command" after a few seconds. You can then type in commands as hex such as...
+With a bit of luck it'll prompt you with "Enter hex command:" after a few seconds. You can then type in commands as hex such as...
 
 | Code | Effect |
 |------|--------|
@@ -24,9 +24,8 @@ WowWee publish [more commands](https://github.com/WowWeeLabs/MiP-BLE-Protocol/bl
 To disconnect gracefully use the "FE" command then enter an empty command to disconnect from the OSX end.
 
 The things I don't understand:
-- It only connects if I call connectPeripheral in didDiscoverPerphipheral AND after the CFRunLoopRunInMode is done
-- Cancelling the run loop as soon as the discovery happens also makes connect fail
-- Timings of CFRunLoops in general can also cause it not to connect in some situations
+- It only connects if I call connectPeripheral in didDiscoverPerphipheral AND on main thread
+- Also between the two connects there seems to need to be a gap
 - *But it does work..... I'm just not happy about it*
 
 *Nb. MiP uses Bluetooth LE so you either need a very up-to-date Mac or a USB Bluetooth LE dongle*
