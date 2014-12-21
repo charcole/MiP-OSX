@@ -245,15 +245,16 @@ struct MiPInputs inputs[]=
 	{
 		realData[length++]=(hexDigitToNum(pHexData[i])<<4) | hexDigitToNum(pHexData[i+1]);
 	}
-	NSLog(@"The command is: %02x and has %d extra bytes (%s)", realData[0], length-1, pHexData+2);
-	char buffer[1024];
+	const char *humanReadible="Unknown";
 	for (int i=0; i<sizeof(inputs)/sizeof(inputs[0]); i++)
 	{
 		if (realData[0]==inputs[i].cmd)
 		{
-			sprintf(buffer, "Decodes as: %s", inputs[i].name);
+			humanReadible=inputs[i].name;
+			break;
 		}
 	}
+	NSLog(@"Got message: %02x (%s) and has %d extra bytes (%s)", realData[0], humanReadible, length-1, pHexData+2);
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error
